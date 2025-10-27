@@ -1,16 +1,13 @@
 package internal
 
 import (
-	"embed"
 	"fmt"
+	"io"
+	"os"
+
 	"github.com/sirupsen/logrus"
 	"gopkg.in/gomail.v2"
-	"io"
-	"log"
-	"os"
 )
-
-var template embed.FS
 
 const (
 	expirationDays = 30
@@ -24,17 +21,14 @@ func NewMailer(logger *logrus.Logger) *Mailer {
 	return &Mailer{logger: logger}
 }
 
-func (m *Mailer) SendEmail(fileContent string, expirationDays float64) (err error) {
+func (m *Mailer) SendEmail(fileContent string, expirationDays float64, emailTemplate string, name string, address string) (err error) {
 	mailer := gomail.NewMessage()
 	mailer.SetHeader("From", os.Getenv("SMTP_FROM"))
-	mailer.SetHeader("To", os.Getenv("SMTP_TO"))
+	mailer.SetHeader("To", address)
 	mailer.SetHeader("Subject", "Nowa konfiguracja OpenVPN dla B-Code")
-	var body []byte
-	if body, err = template.ReadFile("mail.template.html"); err != nil {
-		log.Fatalf("Błąd podczas odczytu pliku: %v", err)
-	}
-	mailer.SetBody("text/plain", fmt.Sprintf(string(body), expirationDays))
-	mailer.Attach("pbabilas.ovpn", gomail.SetCopyFunc(func(w io.Writer) error {
+
+	mailer.SetBody("text/html", fmt.Sprintf(emailTemplate, expirationDays))
+	mailer.Attach(fmt.Sprintf("%s.ovpn", name), gomail.SetCopyFunc(func(w io.Writer) error {
 		_, err := w.Write([]byte(fileContent))
 		return err
 	}))

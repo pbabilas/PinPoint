@@ -1,6 +1,6 @@
 client
 dev tun
-remote 91.195.93.49 1194 udp
+remote vpn.b-code.cloud 1194 udp
 tun-mtu 1500
 tls-client
 nobind
@@ -21,26 +21,7 @@ reneg-sec 3600
 explicit-exit-notify 1
 remote-cert-tls server
 <ca>
------BEGIN CERTIFICATE-----
-MIIDFzCCAf+gAwIBAgIIWd9sJ4fKeMgwDQYJKoZIhvcNAQELBQAwEzERMA8GA1UE
-AwwIUm91dGVyT1MwHhcNMjMwNDA3MTkyNjUxWhcNMjUxMTA3MTkyNjUxWjATMREw
-DwYDVQQDDAhSb3V0ZXJPUzCCASIwDQYJKoZIhvcNAQEBBQADggEPADCCAQoCggEB
-ALKUUfIM8bO3pDXjj5u8pVvwI+g0r8pNhfmtf/g6pdBVDIoQSVo0nHpatYs1X8Zt
-1m8QpZeNIiyz1t6N1zQk2YgcC9nhwOrvMY/1qZsj4/d7yzXzo1dFgg2I2n+yIMc1
-Wt+q3/e6zVarKVsz2LiygoNM2BX5mPGPdHdun5vGZ0ifdyF1/W3jKVDD7q4xwkP3
-Lx5quYMn6KJjV+F6coIOdHwoCTrrzwk2spq5awsNne6ExZWaQjrmnPGlzwrM9cDm
-/FRrrIEZuOLPIyAMMnqzE0hOHKj0Pa+u4NpuIC0uTENOoJaqBbhkKQAMwFPAjE8e
-adURWAuxUPuzTwq5aUoZLhkCAwEAAaNvMG0wDwYDVR0TAQH/BAUwAwEB/zAOBgNV
-HQ8BAf8EBAMCAQYwHQYDVR0OBBYEFHqqFaPn+i5xNLdb+Lu7RfkzdkYcMCsGA1Ud
-HwQkMCIwIKAeoByGGmh0dHA6Ly8xMjcuMC4wLjEvY3JsLzEuY3JsMA0GCSqGSIb3
-DQEBCwUAA4IBAQBadwzB14gtfqj84tH6+1Zgft6y9YIUWsBvd/LvRtZGA0o9PR2Z
-VMZHz/o95TiLf/cXB3nFARTbq7ss3RNcPJPUpRC5tE1hTZdl8tytulwKYyTP1ZOt
-TJFuwAqgmbcGUAsoCt7UQN603mo9iYlq+8U136ZfMqq4ojuKOjSwqqBba/gMt6Ak
-PHxiAKwbDhYZKlDFaqR3UCg37mD07BOD8UjF0QHYh0VdFIxaAaD4c5vGI3ofgzQG
-MonNpQYG/tEDpoFT6L4b+L3wfjcpJWxSMqIHbSpmxjMXt9GELYpiMrs+5IhChLjX
-KVcUpmwchYCY2JRekmGYc0e0ojPvDGS7TSmm
------END CERTIFICATE-----
-</ca>
+%s</ca>
 <cert>
 %s</cert>
 <key>
