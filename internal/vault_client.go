@@ -231,3 +231,116 @@ func (vc *VaultClient) GetCACertificate() (string, error) {
 
 	return string(caCert), nil
 }
+
+// IssueServerCertificate generuje nowy certyfikat serwera
+func (vc *VaultClient) IssueServerCertificate(commonName string, ttl string) (*ServerCertificate, error) {
+	path := fmt.Sprintf("%s/issue/%s", vc.pkiPath, "ovpn-server")
+
+	data := map[string]interface{}{
+		"common_name": commonName,
+		"ttl":         ttl,
+	}
+
+	vc.logger.Infof("Generowanie nowego certyfikatu serwera dla %s w Vault", commonName)
+
+	secret, err := vc.client.Logical().Write(path, data)
+	if err != nil {
+		return nil, fmt.Errorf("nie udało się wygenerować certyfikatu serwera: %w", err)
+	}
+
+	if secret == nil || secret.Data == nil {
+		return nil, fmt.Errorf("Vault nie zwrócił danych certyfikatu serwera")
+	}
+
+	certificate, ok := secret.Data["certificate"].(string)
+	if !ok {
+		return nil, fmt.Errorf("nieprawidłowy format certyfikatu serwera w odpowiedzi")
+	}
+
+	privateKey, ok := secret.Data["private_key"].(string)
+	if !ok {
+		return nil, fmt.Errorf("nieprawidłowy format klucza prywatnego serwera w odpowiedzi")
+	}
+
+	issuingCA, ok := secret.Data["issuing_ca"].(string)
+	if !ok {
+		return nil, fmt.Errorf("nieprawidłowy format CA w odpowiedzi")
+	}
+
+	serialNumber, ok := secret.Data["serial_number"].(string)
+	if !ok {
+		return nil, fmt.Errorf("nieprawidłowy format numeru seryjnego w odpowiedzi")
+	}
+
+	// Parsowanie certyfikatu, aby uzyskać datę wygaśnięcia
+	block, _ := pem.Decode([]byte(certificate))
+	if block == nil {
+		return nil, fmt.Errorf("nie udało się zdekodować certyfikatu serwera PEM")
+	}
+
+	cert, err := x509.ParseCertificate(block.Bytes)
+	if err != nil {
+		return nil, fmt.Errorf("nie udało się sparsować certyfikatu serwera: %w", err)
+	}
+
+	vc.logger.Infof("Nowy certyfikat serwera wygenerowany: serial=%s, expires=%s", serialNumber, cert.NotAfter.Format("2006-01-02"))
+
+	return &ServerCertificate{
+		CommonName:   commonName,
+		SerialNumber:  serialNumber,
+		Certificate:  certificate,
+		PrivateKey:   privateKey,
+		IssuingCA:   issuingCA,
+		CreatedAt:    time.Now(),
+		LastRenewed:  time.Now(),
+		ExpiresAt:    cert.NotAfter,
+		TTL:          ttl,
+	}, nil
+}
+
+// GetServerCertificate pobiera informacje o certyfikacie serwera z Vault
+func (vc *VaultClient) GetServerCertificate(serialNumber string) (*ServerCertificate, error) {
+	path := fmt.Sprintf("%s/cert/%s", vc.pkiPath, serialNumber)
+
+	secret, err := vc.client.Logical().Read(path)
+	if err != nil {
+		return nil, fmt.Errorf("nie udało się pobrać certyfikatu serwera: %w", err)
+	}
+
+	if secret == nil || secret.Data == nil {
+		return nil, fmt.Errorf("certyfikat serwera o numerze seryjnym %s nie został znaleziony", serialNumber)
+	}
+
+	certificate, ok := secret.Data["certificate"].(string)
+	if !ok {
+		return nil, fmt.Errorf("nieprawidłowy format certyfikatu serwera w odpowiedzi")
+	}
+
+	// Parsowanie certyfikatu, aby uzyskać datę wygaśnięcia
+	block, _ := pem.Decode([]byte(certificate))
+	if block == nil {
+		return nil, fmt.Errorf("nie udało się zdekodować certyfikatu serwera PEM")
+	}
+
+	cert, err := x509.ParseCertificate(block.Bytes)
+	if err != nil {
+		return nil, fmt.Errorf("nie udało się sparsować certyfikatu serwera: %w", err)
+	}
+
+	var issuingCA string
+	if caData, ok := secret.Data["issuing_ca"]; ok {
+		if caStr, ok := caData.(string); ok {
+			issuingCA = caStr
+		}
+	}
+
+	return &ServerCertificate{
+		Certificate:  certificate,
+		SerialNumber:  serialNumber,
+		CommonName:   cert.Subject.CommonName,
+		ExpiresAt:    cert.NotAfter,
+		CreatedAt:    time.Now(), // Ta informacja nie jest dostępna w Vault
+		LastRenewed:  time.Now(), // Ta informacja nie jest dostępna w Vault
+		IssuingCA:   issuingCA,
+	}, nil
+}

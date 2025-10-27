@@ -21,7 +21,7 @@ func NewMailer(logger *logrus.Logger) *Mailer {
 	return &Mailer{logger: logger}
 }
 
-func (m *Mailer) SendEmail(fileContent string, expirationDays float64, emailTemplate string, name string, address string) (err error) {
+func (m *Mailer) SendEmail(fileContent string, expirationDays int, emailTemplate string, name string, address string) (err error) {
 	mailer := gomail.NewMessage()
 	mailer.SetHeader("From", os.Getenv("SMTP_FROM"))
 	mailer.SetHeader("To", address)

@@ -1,3 +1,5 @@
 .env
 .idea
 conf/*
+certificates.json
+certificates.json.tmp
