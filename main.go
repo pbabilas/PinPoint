@@ -276,8 +276,8 @@ func handleServerMode(certDB *internal.CertificateDB, vaultClient *internal.Vaul
 
 	var serverCert *internal.ServerCertificate
 	var err error
-	var daysUntilExpiry float64 = 0
-	var serverCertificateRenewed bool = false
+	var daysUntilExpiry float64
+	var serverCertificateRenewed bool
 
 	// Sprawdź czy certyfikat serwera istnieje
 	serverCert, exists := certDB.GetServerCertificate(commonName)

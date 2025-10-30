@@ -216,17 +216,15 @@ func (vc *VaultClient) RenewCertificate(oldSerialNumber, commonName, ttl string)
 // GetCACertificate pobiera certyfikat CA
 func (vc *VaultClient) GetCACertificate() (string, error) {
 	path := fmt.Sprintf("%s/ca/pem", vc.pkiPath)
-
-	req := vc.client.NewRequest("GET", "/v1/"+path)
 	ctx := context.Background()
 
-	resp, err := vc.client.RawRequestWithContext(ctx, req)
+	secret, err := vc.client.Logical().ReadRawWithContext(ctx, path)
 	if err != nil {
 		return "", fmt.Errorf("nie udało się pobrać certyfikatu CA: %w", err)
 	}
-	defer resp.Body.Close()
+	defer secret.Body.Close()
 
-	caCert, err := io.ReadAll(resp.Body)
+	caCert, err := io.ReadAll(secret.Body)
 	if err != nil {
 		return "", fmt.Errorf("nie udało się odczytać certyfikatu CA: %w", err)
 	}
