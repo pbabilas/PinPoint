@@ -1,28 +1,26 @@
 client
 dev tun
-remote vpn.b-code.cloud 1194 udp
-tun-mtu 1500
-tls-client
+proto udp
+remote vpn.b-code.cloud 1194
+resolv-retry infinite
 nobind
-user nobody
-group nogroup
-ping 15
-ping-restart 45
-persist-tun
 persist-key
-mute-replay-warnings
-verb 3
-cipher AES-256-GCM
-auth none
-pull
-auth-user-pass
-connect-retry 1
-reneg-sec 3600
-explicit-exit-notify 1
+persist-tun
 remote-cert-tls server
+explicit-exit-notify 3
+cipher AES-256-GCM
+data-ciphers AES-128-GCM:AES-192-GCM:AES-256-GCM
+data-ciphers-fallback AES-128-GCM
+auth SHA512
+auth-user-pass
+redirect-gateway def1
+verb 3
 <ca>
-%s</ca>
+%s
+</ca>
 <cert>
-%s</cert>
+%s
+</cert>
 <key>
-%s</key>
+%s
+</key>

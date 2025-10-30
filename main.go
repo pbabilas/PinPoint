@@ -61,13 +61,17 @@ func main() {
 	vaultSecretID := os.Getenv("VAULT_SECRET_ID")
 	vaultPKIPath := os.Getenv("VAULT_PKI_PATH")
 	vaultRole := os.Getenv("VAULT_ROLE")
+	vaultServerRole := os.Getenv("VAULT_SERVER_ROLE")
+	if vaultServerRole == "" {
+		vaultServerRole = "ovpn-server" // Domyślna rola serwera
+	}
 
 	if vaultAddr == "" || vaultRoleID == "" || vaultSecretID == "" || vaultPKIPath == "" || vaultRole == "" {
 		log.Fatalf("Brak wymaganej konfiguracji Vault. Sprawdź zmienne: VAULT_ADDR, VAULT_ROLE_ID, VAULT_SECRET_ID, VAULT_PKI_PATH, VAULT_ROLE")
 	}
 
 	// Utwórz klienta Vault
-	vaultClient, err := internal.NewVaultClient(vaultAddr, vaultRoleID, vaultSecretID, vaultPKIPath, vaultRole, logger)
+	vaultClient, err := internal.NewVaultClient(vaultAddr, vaultRoleID, vaultSecretID, vaultPKIPath, vaultRole, vaultServerRole, logger)
 	if err != nil {
 		log.Fatalf("Błąd podczas tworzenia klienta Vault: %v", err)
 	}
@@ -190,12 +194,6 @@ func main() {
 		}
 	}
 
-	// Pobierz certyfikat CA
-	caCert, err := vaultClient.GetCACertificate()
-	if err != nil {
-		log.Fatalf("Błąd podczas pobierania certyfikatu CA: %v", err)
-	}
-
 	// Wczytaj szablon konfiguracji OpenVPN
 	var ovpnTemplate []byte
 	if ovpnTemplate, err = config.ReadFile("user.ovpn.template"); err != nil {
@@ -206,7 +204,7 @@ func main() {
 	var ovpnConfig string
 	if certInfo.PrivateKey != "" {
 		// Mamy klucz prywatny - generujemy nową konfigurację
-		ovpnConfig = fmt.Sprintf(string(ovpnTemplate), caCert, certInfo.Certificate, certInfo.PrivateKey)
+		ovpnConfig = fmt.Sprintf(string(ovpnTemplate), certInfo.CAChain, certInfo.Certificate, certInfo.PrivateKey)
 		err = os.WriteFile(fmt.Sprintf("%s/%s.ovpn", *outputDir, *commonName), []byte(ovpnConfig), 0644)
 		if err != nil {
 			log.Fatalf(err.Error())
@@ -279,6 +277,7 @@ func handleServerMode(certDB *internal.CertificateDB, vaultClient *internal.Vaul
 	var serverCert *internal.ServerCertificate
 	var err error
 	var daysUntilExpiry float64 = 0
+	var serverCertificateRenewed bool = false
 
 	// Sprawdź czy certyfikat serwera istnieje
 	serverCert, exists := certDB.GetServerCertificate(commonName)
@@ -308,6 +307,7 @@ func handleServerMode(certDB *internal.CertificateDB, vaultClient *internal.Vaul
 				log.Fatalf("Błąd podczas odnawiania certyfikatu serwera: %v", err)
 			}
 
+			serverCertificateRenewed = true
 			logger.Infof("Certyfikat serwera odnowiony, serial: %s", serverCert.SerialNumber)
 		} else {
 			logger.Infof("Certyfikat serwera nie wymaga odnowienia")
@@ -321,6 +321,7 @@ func handleServerMode(certDB *internal.CertificateDB, vaultClient *internal.Vaul
 			log.Fatalf("Błąd podczas generowania certyfikatu serwera: %v", err)
 		}
 
+		serverCertificateRenewed = true
 		logger.Infof("Nowy certyfikat serwera wygenerowany, serial: %s", serverCert.SerialNumber)
 
 		// Oblicz dni do wygaśnięcia dla nowo wygenerowanego certyfikatu
@@ -335,28 +336,35 @@ func handleServerMode(certDB *internal.CertificateDB, vaultClient *internal.Vaul
 			logger.Warnf("Błąd podczas aktualizacji adresu IP Mikrotika: %v", err)
 		}
 
-		// Integracja z API Mikrotika - wysłanie certyfikatu
-		if os.Getenv("MIKROTIK_USERNAME") != "" && os.Getenv("MIKROTIK_PASSWORD") != "" {
-			// Pobierz dane dostępowe Mikrotika ze zmiennych środowiskowych
-			mikrotikUsername := os.Getenv("MIKROTIK_USERNAME")
-			mikrotikPassword := os.Getenv("MIKROTIK_PASSWORD")
+		// Wysyłaj certyfikat na Mikrotika TYLKO jeśli został wygenerowany/odnowiony
+		if serverCertificateRenewed {
+			// Integracja z API Mikrotika - wysłanie certyfikatu
+			if os.Getenv("MIKROTIK_USERNAME") != "" && os.Getenv("MIKROTIK_PASSWORD") != "" {
+				// Pobierz dane dostępowe Mikrotika ze zmiennych środowiskowych
+				mikrotikUsername := os.Getenv("MIKROTIK_USERNAME")
+				mikrotikPassword := os.Getenv("MIKROTIK_PASSWORD")
 
-			// Utwórz klienta integracji Mikrotik
-			mikrotikClient, err := internal.NewMikrotikIntegration(mikrotikIP, mikrotikUsername, mikrotikPassword, logger)
-			if err != nil {
-				logger.Warnf("Nie udało się połączyć z Mikrotikiem: %v", err)
-				logger.Warnf("Certyfikat zostanie zaktualizowany ręcznie na routerze")
-			} else {
-				// Wysłij certyfikat na Mikrotik
-				if err := mikrotikClient.UploadCertificateToMikrotik(serverCert); err != nil {
-					logger.Warnf("Błąd podczas wysyłania certyfikatu na Mikrotik: %v", err)
+				// Utwórz klienta integracji Mikrotik
+				mikrotikClient, err := internal.NewMikrotikIntegration(mikrotikIP, mikrotikUsername, mikrotikPassword, logger)
+				if err != nil {
+					logger.Warnf("Nie udało się połączyć z Mikrotikiem: %v", err)
+					logger.Warnf("Certyfikat zostanie zaktualizowany ręcznie na routerze")
 				} else {
-					logger.Infof("Certyfikat serwera został pomyślnie wysłany na routery Mikrotik")
+					defer mikrotikClient.Close()
+
+					// Wysłij certyfikat na Mikrotik
+					if err := mikrotikClient.UploadCertificateToMikrotik(serverCert); err != nil {
+						logger.Warnf("Błąd podczas wysyłania certyfikatu na Mikrotik: %v", err)
+					} else {
+						logger.Infof("Certyfikat serwera został pomyślnie wysłany na routery Mikrotik")
+					}
 				}
+			} else {
+				logger.Warnf("Brak danych dostępowych Mikrotika (MIKROTIK_USERNAME, MIKROTIK_PASSWORD)")
+				logger.Infof("Certyfikat serwera wymaga ręcznej aktualizacji na routerze Mikrotik (%s)", mikrotikIP)
 			}
 		} else {
-			logger.Warnf("Brak danych dostępowych Mikrotika (MIKROTIK_USERNAME, MIKROTIK_PASSWORD)")
-			logger.Infof("Certyfikat serwera wymaga ręcznej aktualizacji na routerze Mikrotik (%s)", mikrotikIP)
+			logger.Infof("Certyfikat serwera nie wymaga odnowienia - pomijam wysyłkę na Mikrotika")
 		}
 	}
 

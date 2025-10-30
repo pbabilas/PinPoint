@@ -13,10 +13,11 @@ import (
 )
 
 type VaultClient struct {
-	client  *vault.Client
-	logger  *logrus.Logger
-	pkiPath string
-	role    string
+	client     *vault.Client
+	logger     *logrus.Logger
+	pkiPath    string
+	role       string
+	serverRole string
 }
 
 type CertificateInfo struct {
@@ -28,7 +29,7 @@ type CertificateInfo struct {
 	CommonName    string
 }
 
-func NewVaultClient(address, roleID, secretID, pkiPath, role string, logger *logrus.Logger) (*VaultClient, error) {
+func NewVaultClient(address, roleID, secretID, pkiPath, role, serverRole string, logger *logrus.Logger) (*VaultClient, error) {
 	config := vault.DefaultConfig()
 	config.Address = address
 
@@ -57,10 +58,11 @@ func NewVaultClient(address, roleID, secretID, pkiPath, role string, logger *log
 	logger.Infof("Pomyślnie zalogowano do Vault (token expires in: %ds)", resp.Auth.LeaseDuration)
 
 	return &VaultClient{
-		client:  client,
-		logger:  logger,
-		pkiPath: pkiPath,
-		role:    role,
+		client:     client,
+		logger:     logger,
+		pkiPath:    pkiPath,
+		role:       role,
+		serverRole: serverRole,
 	}, nil
 }
 
@@ -234,7 +236,7 @@ func (vc *VaultClient) GetCACertificate() (string, error) {
 
 // IssueServerCertificate generuje nowy certyfikat serwera
 func (vc *VaultClient) IssueServerCertificate(commonName string, ttl string) (*ServerCertificate, error) {
-	path := fmt.Sprintf("%s/issue/%s", vc.pkiPath, "ovpn-server")
+	path := fmt.Sprintf("%s/issue/%s", vc.pkiPath, vc.serverRole)
 
 	data := map[string]interface{}{
 		"common_name": commonName,
@@ -262,9 +264,17 @@ func (vc *VaultClient) IssueServerCertificate(commonName string, ttl string) (*S
 		return nil, fmt.Errorf("nieprawidłowy format klucza prywatnego serwera w odpowiedzi")
 	}
 
-	issuingCA, ok := secret.Data["issuing_ca"].(string)
+	caChain, ok := secret.Data["ca_chain"].([]interface{})
 	if !ok {
-		return nil, fmt.Errorf("nieprawidłowy format CA w odpowiedzi")
+		return nil, fmt.Errorf("nieprawidłowy format ca_chain w odpowiedzi")
+	}
+
+	// Konwersja ca_chain do stringa
+	var caChainStr string
+	for _, ca := range caChain {
+		if caStr, ok := ca.(string); ok {
+			caChainStr += caStr + "\n"
+		}
 	}
 
 	serialNumber, ok := secret.Data["serial_number"].(string)
@@ -290,7 +300,7 @@ func (vc *VaultClient) IssueServerCertificate(commonName string, ttl string) (*S
 		SerialNumber:  serialNumber,
 		Certificate:  certificate,
 		PrivateKey:   privateKey,
-		IssuingCA:   issuingCA,
+		IssuingCA:   caChainStr,
 		CreatedAt:    time.Now(),
 		LastRenewed:  time.Now(),
 		ExpiresAt:    cert.NotAfter,

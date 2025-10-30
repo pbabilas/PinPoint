@@ -1,5 +1,12 @@
 .env
+.env.local
+.env.*.local
 .idea
 conf/*
 certificates.json
 certificates.json.tmp
+*.log
+logs/
+# Ignore binary files
+bin/*
+CLAUDE.md
