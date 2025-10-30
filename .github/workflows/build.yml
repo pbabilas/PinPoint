@@ -39,14 +39,14 @@ jobs:
 
       - name: Verify binary
         run: |
-          ls -lh bin/routeros-util.linux_amd64
-          file bin/routeros-util.linux_amd64
+          ls -lh bin/pinpoint-linux-amd64
+          file bin/pinpoint-linux-amd64
 
       - name: Upload artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: binary-go-${{ matrix.go-version }}
-          path: bin/routeros-util.linux_amd64
+          path: bin/pinpoint-linux-amd64
 
   lint:
     name: Lint
@@ -86,7 +86,7 @@ jobs:
         run: go test -v -race -coverprofile=coverage.out ./...
 
       - name: Upload coverage
-        uses: codecov/codecov-action@v3
+        uses: codecov/codecov-action@v4
         with:
           files: ./coverage.out
           flags: unittests
@@ -118,7 +118,7 @@ jobs:
           GOOS=${{ matrix.os }} GOARCH=${{ matrix.arch }} go build -o dist/ovpn-cert-renew-${{ matrix.os }}-${{ matrix.arch }} .
 
       - name: Upload cross-build artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: dist-${{ matrix.os }}-${{ matrix.arch }}
           path: dist/

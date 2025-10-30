@@ -95,8 +95,7 @@ func (cm *CertManager) RenewCert(routerOs RouterOS, certVal map[string]string) (
 }
 
 func (cm *CertManager) GetCert(client RouterOS, certName string) map[string]string {
-	expireAfterCmd := fmt.Sprintf("/certificate/print")
-	res, err := client.Cmd([]string{expireAfterCmd, "?name=" + certName})
+	res, err := client.Cmd([]string{"/certificate/print", "?name=" + certName})
 	if err != nil {
 		log.Fatalf("Błąd podczas wykonywania komendy: %v", err)
 	}

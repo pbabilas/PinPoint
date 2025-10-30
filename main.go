@@ -20,7 +20,7 @@ func main() {
 
 	err := godotenv.Load(".env")
 	if err != nil {
-		log.Fatalf("Error loading .env file: %s", err)
+		log.Fatalf("Error loading .env file: %v", err)
 	}
 
 	parser := argparse.NewParser("vault-ovpn-renew", "Renew OpenVPN certificates from HashiCorp Vault")
@@ -44,15 +44,15 @@ func main() {
 	}
 
 	if err = parser.Parse(os.Args); err != nil {
-		logger.Fatalf(parser.Usage(err))
+		logger.Fatalf("Parse error: %s", parser.Usage(err))
 	}
 
 	info, err := os.Stat(*outputDir)
 	if err != nil {
-		log.Fatalf(err.Error())
+		log.Fatalf("Error: %v", err)
 	}
 	if !info.IsDir() {
-		log.Fatalf(fmt.Sprintf("Output directory '%s' should be a directory", *outputDir))
+		log.Fatalf("Output directory '%s' should be a directory", *outputDir)
 	}
 
 	// Pobierz konfigurację z ENV
@@ -182,7 +182,7 @@ func main() {
 			logger.Warnf("Błąd podczas dodawania użytkownika do bazy danych: %v", err)
 		}
 
-		daysUntilExpiry = certInfo.ExpiresAt.Sub(time.Now()).Hours() / 24
+		daysUntilExpiry = time.Until(certInfo.ExpiresAt).Hours() / 24
 
 		// Sprawdź czy istnieje certyfikat serwera dla tego użytkownika
 		if _, exists := certDB.GetServerCertificate(*commonName); exists {
@@ -207,7 +207,7 @@ func main() {
 		ovpnConfig = fmt.Sprintf(string(ovpnTemplate), certInfo.CAChain, certInfo.Certificate, certInfo.PrivateKey)
 		err = os.WriteFile(fmt.Sprintf("%s/%s.ovpn", *outputDir, *commonName), []byte(ovpnConfig), 0644)
 		if err != nil {
-			log.Fatalf(err.Error())
+			log.Fatalf("Error writing OVPN config: %v", err)
 		}
 		logger.Infof("Wygenerowano nową konfigurację OpenVPN")
 	} else {

@@ -31,7 +31,11 @@ func NewMikrotikIntegration(ip, username, password string, logger *logrus.Logger
 	// Test połączenia FTP
 	ftpClient, err := ftp.Dial(ip + ":21")
 	if err == nil {
-		defer ftpClient.Quit()
+		defer func() {
+			if err := ftpClient.Quit(); err != nil {
+				logger.Debugf("Error closing FTP connection: %v", err)
+			}
+		}()
 		err = ftpClient.Login(username, password)
 		if err == nil {
 			logger.Infof("Połączono FTP z routerem Mikrotik: %s", ip)
@@ -155,7 +159,11 @@ func (mi *MikrotikIntegration) uploadFileViaFTP(remoteFilename, fileContent stri
 	if err != nil {
 		return fmt.Errorf("nie udało się połączyć FTP: %w", err)
 	}
-	defer ftpClient.Quit()
+	defer func() {
+		if err := ftpClient.Quit(); err != nil {
+			mi.logger.Debugf("Error closing FTP connection: %v", err)
+		}
+	}()
 
 	// Zaloguj się
 	err = ftpClient.Login(mi.username, mi.password)
@@ -218,21 +226,6 @@ func (mi *MikrotikIntegration) cleanupTempFile(file string) {
 	_, err := mi.client.Run("/file/remove", "=.id="+file)
 	if err != nil {
 		mi.logger.Warnf("Nie udało się usunąć pliku tymczasowego %s: %v", file, err)
-	}
-}
-
-// cleanupTempFiles usuwa pliki tymczasowe z routera (deprecated - używaj cleanupTempFile)
-func (mi *MikrotikIntegration) cleanupTempFiles(certFile, keyFile string) {
-	mi.logger.Debugf("Czyszczenie plików tymczasowych")
-
-	// Utwórz listę plików do usunięcia
-	filesToDelete := []string{certFile, keyFile}
-
-	for _, file := range filesToDelete {
-		_, err := mi.client.Run("/file/remove", "=.id="+file)
-		if err != nil {
-			mi.logger.Warnf("Nie udało się usunąć pliku tymczasowego %s: %v", file, err)
-		}
 	}
 }
 

@@ -9,10 +9,6 @@ import (
 	"gopkg.in/gomail.v2"
 )
 
-const (
-	expirationDays = 30
-)
-
 type Mailer struct {
 	logger *logrus.Logger
 }
