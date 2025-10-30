@@ -7,7 +7,7 @@ import (
 	"os"
 	"time"
 
-	"b-code.cloud/routeros/ovpn/internal"
+	"github.com/pbabilas/pinpoint/internal"
 	"github.com/akamensky/argparse"
 	"github.com/joho/godotenv"
 	"github.com/sirupsen/logrus"

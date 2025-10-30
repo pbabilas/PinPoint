@@ -1,8 +1,8 @@
-# OpenVPN Certificate Manager
+# PinPoint
 
-Narzędzie do automatycznego zarządzania certyfikatami OpenVPN z integracją HashiCorp Vault i Mikrotik RouterOS.
+Narzędzie do precyzyjnego zarządzania certyfikatami OpenVPN z integracją HashiCorp Vault i Mikrotik RouterOS.
 
-**English**: Tool for automatic OpenVPN certificate management with HashiCorp Vault and Mikrotik RouterOS integration.
+**English**: Tool for precise OpenVPN certificate management with HashiCorp Vault and Mikrotik RouterOS integration.
 
 ## Funkcionalność / Features
 
@@ -26,12 +26,12 @@ Narzędzie do automatycznego zarządzania certyfikatami OpenVPN z integracją Ha
 ### Z kodu źródłowego / From Source
 
 ```bash
-git clone https://github.com/your-repo/ovpn-cert-renew.git
-cd ovpn-cert-renew
+git clone https://github.com/your-repo/pinpoint.git
+cd pinpoint
 make build
 ```
 
-Skompilowany plik znajduje się w: `bin/routeros-util.linux_amd64`
+Skompilowany plik znajduje się w: `bin/pinpoint`
 
 Dla innych systemów operacyjnych:
 ```bash
@@ -230,30 +230,30 @@ Wymagane jest tylko podanie adresu IP Mikrotika i danych dostępu.
 
 ```bash
 # Podstawowe użycie
-./bin/routeros-util.linux_amd64 -n pbabilas.client.vpn
+./bin/pinpoint -n pbabilas.client.vpn
 
 # Z niestandardowym emailem
-./bin/routeros-util.linux_amd64 -n pbabilas.client.vpn -e pbabilas@example.com
+./bin/pinpoint -n pbabilas.client.vpn -e pbabilas@example.com
 
 # Z niestandardowym TTL (Time To Live)
-./bin/routeros-util.linux_amd64 -n pbabilas.client.vpn -t 8760h
+./bin/pinpoint -n pbabilas.client.vpn -t 8760h
 
 # Z niestandardowym katalogiem wyjściowym
-./bin/routeros-util.linux_amd64 -n pbabilas.client.vpn -o ./my-configs
+./bin/pinpoint -n pbabilas.client.vpn -o ./my-configs
 ```
 
 #### Wymuszenie Odnowienia
 
 ```bash
 # Nawet jeśli certyfikat nie wygasł
-./bin/routeros-util.linux_amd64 -n pbabilas.client.vpn --force-renew
+./bin/pinpoint -n pbabilas.client.vpn --force-renew
 ```
 
 #### Wysłanie Maila Ponownie
 
 ```bash
 # Bez regenerowania certyfikatu
-./bin/routeros-util.linux_amd64 -n pbabilas.client.vpn --resend
+./bin/pinpoint -n pbabilas.client.vpn --resend
 ```
 
 ### Tryb Serwera / Server Mode
@@ -262,7 +262,7 @@ Wymagane jest tylko podanie adresu IP Mikrotika i danych dostępu.
 
 ```bash
 # Podstawowe użycie
-./bin/routeros-util.linux_amd64 -m server \
+./bin/pinpoint -m server \
   -n vpn.example.com \
   -i 192.168.1.1 \
   -e admin@example.com
@@ -277,7 +277,7 @@ Wymagane jest tylko podanie adresu IP Mikrotika i danych dostępu.
 #### Wymuszenie Odnowienia Serwera
 
 ```bash
-./bin/routeros-util.linux_amd64 -m server \
+./bin/pinpoint -m server \
   -n vpn.example.com \
   -i 192.168.1.1 \
   --force-renew
@@ -309,34 +309,34 @@ crontab -e
 
 # Dodaj wpisy dla automatycznego odnawiania
 # Sprawdzaj codziennie o 2:00 AM
-0 2 * * * /opt/ovpn-cert-renew/bin/routeros-util.linux_amd64 -n pbabilas.client.vpn >> /var/log/ovpn-renew.log 2>&1
+0 2 * * * /opt/pinpoint/bin/pinpoint -n pbabilas.client.vpn >> /var/log/pinpoint.log 2>&1
 
 # Dla serwera
-0 3 * * * /opt/ovpn-cert-renew/bin/routeros-util.linux_amd64 -m server -n vpn.example.com -i 192.168.1.1 >> /var/log/ovpn-renew.log 2>&1
+0 3 * * * /opt/pinpoint/bin/pinpoint -m server -n vpn.example.com -i 192.168.1.1 >> /var/log/pinpoint.log 2>&1
 ```
 
 #### Systemd Timer (Rekomendowane)
 
 ```bash
 # Utwórz plik usługi
-sudo tee /etc/systemd/system/ovpn-renew.service << EOF
+sudo tee /etc/systemd/system/pinpoint.service << EOF
 [Unit]
-Description=OpenVPN Certificate Renewal
+Description=PinPoint Certificate Renewal
 After=network-online.target
 Wants=network-online.target
 
 [Service]
 Type=oneshot
-ExecStart=/opt/ovpn-cert-renew/bin/routeros-util.linux_amd64 -n pbabilas.client.vpn
+ExecStart=/opt/pinpoint/bin/pinpoint -n pbabilas.client.vpn
 StandardOutput=journal
 StandardError=journal
 EOF
 
 # Utwórz timer
-sudo tee /etc/systemd/system/ovpn-renew.timer << EOF
+sudo tee /etc/systemd/system/pinpoint.timer << EOF
 [Unit]
-Description=OpenVPN Certificate Renewal Timer
-Requires=ovpn-renew.service
+Description=PinPoint Certificate Renewal Timer
+Requires=pinpoint.service
 
 [Timer]
 OnCalendar=daily
@@ -348,11 +348,11 @@ WantedBy=timers.target
 EOF
 
 # Włącz timer
-sudo systemctl enable ovpn-renew.timer
-sudo systemctl start ovpn-renew.timer
+sudo systemctl enable pinpoint.timer
+sudo systemctl start pinpoint.timer
 
 # Sprawdź status
-sudo systemctl status ovpn-renew.timer
+sudo systemctl status pinpoint.timer
 sudo systemctl list-timers
 ```
 
@@ -455,7 +455,7 @@ USERS=(
 
 for user_info in "${USERS[@]}"; do
   IFS=':' read -r name email <<< "$user_info"
-  ./bin/routeros-util.linux_amd64 -n "$name" -e "$email"
+  ./bin/pinpoint -n "$name" -e "$email"
 done
 ```
 
@@ -473,7 +473,7 @@ SERVERS=(
 
 for server_info in "${SERVERS[@]}"; do
   IFS=':' read -r name ip <<< "$server_info"
-  ./bin/routeros-util.linux_amd64 \
+  ./bin/pinpoint \
     -m server \
     -n "$name" \
     -i "$ip" \
@@ -567,4 +567,4 @@ Chętnie przyjmujemy pull requests! Przed wysłaniem:
 
 ---
 
-**Made with ❤️ for OpenVPN and Vault automation**
+**PinPoint** - Precise OpenVPN Certificate Management

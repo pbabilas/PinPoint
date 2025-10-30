@@ -1,4 +1,4 @@
-module b-code.cloud/routeros/ovpn
+module github.com/pbabilas/pinpoint
 
 go 1.24.0
 

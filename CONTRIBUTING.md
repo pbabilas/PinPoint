@@ -1,4 +1,4 @@
-# Contributing to OpenVPN Certificate Manager
+# Contributing to PinPoint
 
 Dziękujemy za zainteresowanie wkładem w ten projekt! / Thank you for your interest in contributing to this project!
 
